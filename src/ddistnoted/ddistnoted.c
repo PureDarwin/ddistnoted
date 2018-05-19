@@ -318,7 +318,7 @@ CFDataRef dndRegisterPort( CFDataRef data )
 	
 	//_dndPrintPorts();
 
-    fprintf(stderr, "returning %8lX from register port\n", hash);
+//    fprintf(stderr, "returning %8lX from register port\n", hash);
 	
 	// return as a unique id the index of this record into the table
 	return CFDataCreate( kCFAllocatorDefault, (const UInt8*)&hash, sizeof(CFHashCode) );
@@ -440,9 +440,9 @@ CFDataRef dndRegisterNotification( CFDataRef data )
  */
 CFDataRef dndUnregisterNotification( CFDataRef data )
 {
-	if(verbose) fprintf(stderr, "Unregister for a notification.\n");
+	if (verbose) fprintf(stderr, "Unregister for a notification.\n");
 	
-	if( (dndPortListCount == 0) || (dndNotListCount == 0) ) return NULL;
+	if (!dndPortListCount || !dndNotListCount) return NULL;
 	
 	// copy & pasted (mostly) from above. could break out into separate functions
 	CFIndex length = CFDataGetLength(data);
@@ -452,7 +452,7 @@ CFDataRef dndUnregisterNotification( CFDataRef data )
 	CFRange range = { 0, sizeof(dndNotReg) };
 	CFDataGetBytes(data, range, (UInt8 *)&info);
 	
-    if(verbose) fprintf(stderr, "uid = %8lX, name = %8lX, object = %8X\n", info.uid, info.name, info.object);
+    if(verbose) fprintf(stderr, "uid = %8lX, name = %8lX, object = %8lX\n", info.uid, info.name, info.object);
 	
 	// check that this uid is valid, and get its index into the ports table
 	dndPortRecord *ports = dndPortList;
@@ -500,16 +500,23 @@ int main (int argc, const char * argv[]) {
     
     // SIGSEV signal handler
     struct sigaction action = { 0 };
-    action.sa_sigaction = Handler;
+    action.sa_sigaction = (void (*)(int, struct __siginfo *, void *))Handler;
     sigemptyset(&action.sa_mask);
     action.sa_flags = SA_SIGINFO | SA_ONSTACK;
     sigaction(SIGSEGV, &action, NULL);
 
-	// parse args and alter settings as needed
-	for (int i = 1; i < argc; i++) {
-		if (strncmp(argv[i], "-v", 2) == 0) verbose = TRUE;
-	}
-	
+    int c = -1;
+    while ((c = getopt (argc, (char * const *)argv, "v")) != -1) {
+        switch (c) {
+            case 'v':
+                verbose = true;
+                break;
+            default:
+                fprintf(stderr, "unknown argument '-%c'\n", c);
+                break;
+        }
+    }
+
 	if (verbose) fprintf(stderr, "ddistnoted has started\n");
 	
 	// create the list for storing clients' info
@@ -528,8 +535,8 @@ int main (int argc, const char * argv[]) {
 	}
 	dndNotListCapacity = NOT_LIST_SIZE;
 	
-	// create the main message port we'll be listening on
-	CFMessagePortContext context = { 0, NULL, NULL, NULL, NULL };	
+	// Create the message port. This will bootstrap_check_in() and claim the port launchd created for us
+	CFMessagePortContext context = { 0, NULL, NULL, NULL, NULL };
 	CFMessagePortRef port = CFMessagePortCreateLocal(kCFAllocatorDefault, CFSTR("org.puredarwin.ddistnoted"), dndMessageRecieved, &context, NULL);
 	
 	if (!port) {
@@ -551,5 +558,6 @@ int main (int argc, const char * argv[]) {
 	CFRunLoopRun();
 	
 	fprintf(stderr, "ddistnoted has escaped its runloop!\n");
+    
 	return 0;
 }

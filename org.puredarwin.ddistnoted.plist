@@ -7,13 +7,15 @@
         <key>ProgramArguments</key>
         <array>
                 <string>/usr/sbin/ddistnoted</string>
-		<string>-verbose</string>
         </array>
-	<key>RunAtLoad</key>
+        <key>KeepAlive</key>
         <true/>
-	<key>KeepAlive</key>
-	<true/>
-	<key>Disabled</key>
-	<false/>
+        <key>Disabled</key>
+        <false/>
+        <key>MachServices</key>
+        <dict>
+                <key>org.puredarwin.ddistnoted</key>
+                <true/>
+        </dict>
 </dict>
 </plist>
